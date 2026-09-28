@@ -421,20 +421,33 @@ sudo nix --extra-experimental-features "nix-command flakes" \
 
 ---
 
-# 15. Ручной режим Disko
+# 15. Почему используется disko-install
 
-Если нужно отдельно выполнить разметку и только потом устанавливать NixOS, можно использовать обычный `disko`.
+Для этого репозитория основной способ установки — `disko-install`.
 
-Например:
+В `disko.nix` намеренно указан безопасный placeholder:
 
-```bash
-sudo nix --extra-experimental-features "nix-command flakes" \
-  run github:nix-community/disko/latest -- \
-  --mode destroy,format,mount \
-  --flake .#nixos
+```text
+/dev/disk/by-id/REPLACE_ME
 ```
 
-Однако в данном репозитории предпочтителен `disko-install`, потому что он объединяет разметку и установку в один последовательный процесс.
+Реальный диск передаётся только в момент установки:
+
+```text
+--disk main /dev/...
+```
+
+Это позволяет использовать один и тот же репозиторий на машинах, где системный диск может называться `/dev/sda`, `/dev/vda` или `/dev/nvme0n1`.
+
+Не запускайте обычный режим:
+
+```bash
+disko --flake .#nixos
+```
+
+пока в `disko.nix` остаётся `REPLACE_ME`.
+
+Если понадобится двухэтапная схема «сначала разметить, затем отдельно выполнить nixos-install», сначала явно измените `device` в `disko.nix` на стабильный путь из `/dev/disk/by-id/`. Для стандартной установки это не требуется.
 
 ---
 

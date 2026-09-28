@@ -34,7 +34,7 @@
             };
 
             root = {
-              size = "100%";
+              size = "60G";
 
               content = {
                 type = "filesystem";

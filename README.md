@@ -9,7 +9,8 @@
 - один системный диск;
 - таблицу разделов GPT;
 - EFI System Partition 1 GiB;
-- корневой раздел ext4 на всё оставшееся место;
+- Btrfs-раздел на всё оставшееся место с подразделами `@root`, `@home`, `@nix`, `@log`;
+- сжатие `zstd` для каждого подраздела;
 - загрузчик systemd-boot;
 - NetworkManager;
 - OpenSSH;
@@ -260,7 +261,7 @@ sudo nix --extra-experimental-features "nix-command flakes" \
 2. уничтожает существующую разметку выбранного диска;
 3. создаёт GPT;
 4. создаёт EFI-раздел;
-5. создаёт ext4 для `/`;
+5. создаёт Btrfs и подразделы для `/`, `/home`, `/nix`, `/var/log`;
 6. монтирует файловые системы;
 7. устанавливает NixOS;
 8. устанавливает systemd-boot;
@@ -275,10 +276,16 @@ sudo nix --extra-experimental-features "nix-command flakes" \
 ```text
 Disk
 ├── ESP    1 GiB   FAT32   /boot
-└── root   rest    ext4    /
+└── root   rest    Btrfs
+    ├── @root   /        compress=zstd,noatime
+    ├── @home   /home    compress=zstd
+    ├── @nix    /nix     compress=zstd,noatime
+    └── @log    /var/log compress=zstd
 ```
 
-Swap-раздел не создаётся.
+Отдельные физические разделы для `/home`, `/nix` и `/var/log` не создаются: подразделы Btrfs используют общий объём свободного места. Снимки Btrfs автоматически не настроены; подразделы только дают возможность добавить их позже.
+
+Swap-раздел и swap-файл не создаются. Гибернация в этой схеме не предусмотрена.
 
 Вместо него включён:
 
@@ -334,6 +341,9 @@ hostnamectl
 lsblk -f
 findmnt /
 findmnt /boot
+findmnt /home
+findmnt /nix
+findmnt /var/log
 systemctl status NetworkManager
 systemctl status sshd
 ```
@@ -528,7 +538,7 @@ efibootmgr -v
 nixos-generate-config
 ```
 
-В этом репозитории разметка и файловые системы полностью описываются через Disko, поэтому UUID разделов в `hardware-configuration.nix` не нужны.
+В этом репозитории разметка и файловые системы полностью описываются через Disko, поэтому UUID разделов в `hardware-configuration.nix` не нужны. После установки проверьте `findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS / /home /nix /var/log /boot` и `lsblk -f`.
 
 Файл `hardware-configuration.nix` содержит общий набор initrd-модулей для наиболее распространённых контроллеров:
 
